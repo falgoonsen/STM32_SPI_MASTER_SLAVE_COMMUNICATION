@@ -56,8 +56,13 @@ static void MX_SPI1_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-uint8_t tx_data[200]="hi how are you ";
+uint8_t tx_data[13]={0xff,1,2,3,4,5,6,7,8,9,10,11,0xff};
+uint8_t rx_data[5];
 uint32_t a;
+uint16_t fail;
+uint16_t success;
+uint8_t status;
+uint16_t flag=0;
 /* USER CODE END 0 */
 
 /**
@@ -91,9 +96,8 @@ int main(void)
   MX_SPI1_Init();
   /* USER CODE BEGIN 2 */
   HAL_GPIO_WritePin(cs_GPIO_Port,cs_Pin,1);
-	
+  HAL_SPI_Receive_IT(&hspi1,rx_data, 5);
 
-		HAL_Delay(2000);
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -103,12 +107,19 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-	 HAL_GPIO_WritePin(cs_GPIO_Port,cs_Pin,0);
-		HAL_SPI_Transmit(&hspi1,tx_data,20, 1000);
-		 HAL_GPIO_WritePin(cs_GPIO_Port,cs_Pin,1);
-				HAL_Delay(2000);
+		tx_data[2]++;
+HAL_GPIO_WritePin(cs_GPIO_Port,cs_Pin,0);
+HAL_SPI_Transmit_IT(&hspi1,tx_data, 13);
 
-		a++;
+ //  HAL_SPI_Transmit(&hspi1,tx_data,13, 1000);
+ //  HAL_SPI_Receive(&hspi1,rx_data,5,2000);
+//   if(flag==1)
+//	 {
+//	 HAL_SPI_Receive_IT(&hspi1,rx_data, 5);
+//		 flag=0;
+//	 }
+	 HAL_Delay(500);
+	 a++;
 
   }
   /* USER CODE END 3 */
@@ -180,10 +191,10 @@ static void MX_SPI1_Init(void)
   hspi1.Init.Mode = SPI_MODE_MASTER;
   hspi1.Init.Direction = SPI_DIRECTION_2LINES;
   hspi1.Init.DataSize = SPI_DATASIZE_8BIT;
-  hspi1.Init.CLKPolarity = SPI_POLARITY_LOW;
-  hspi1.Init.CLKPhase = SPI_PHASE_1EDGE;
+  hspi1.Init.CLKPolarity = SPI_POLARITY_HIGH;
+  hspi1.Init.CLKPhase = SPI_PHASE_2EDGE;
   hspi1.Init.NSS = SPI_NSS_SOFT;
-  hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_256;
+  hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_128;
   hspi1.Init.FirstBit = SPI_FIRSTBIT_MSB;
   hspi1.Init.TIMode = SPI_TIMODE_DISABLE;
   hspi1.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
@@ -228,7 +239,22 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
+void HAL_SPI_RxCpltCallback(SPI_HandleTypeDef *hspi)
+{	
+			if (rx_data[0]==0xff && rx_data[1] == 'a' && rx_data[4] == 0xff )
+			{
+				success++;
+			}
+			else{
+				fail++;
+			}
+}
 
+void HAL_SPI_TxCpltCallback(SPI_HandleTypeDef * hspi)
+{
+  HAL_GPIO_WritePin(cs_GPIO_Port,cs_Pin,1);
+	HAL_SPI_Receive_IT(&hspi1,rx_data, 5);
+}
 /* USER CODE END 4 */
 
 /**

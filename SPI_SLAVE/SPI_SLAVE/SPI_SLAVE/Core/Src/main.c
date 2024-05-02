@@ -36,8 +36,12 @@
 
 /* Private macro -------------------------------------------------------------*/
 /* USER CODE BEGIN PM */
-uint8_t rx_data[2048];
+uint8_t rx_data[13];
+uint8_t tx_data[5]={0xff,'a','p','u',0xff};
 uint32_t a;
+uint16_t fail;
+uint8_t status;
+volatile uint16_t flag=0;
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
@@ -93,7 +97,8 @@ int main(void)
   MX_DMA_Init();
   MX_SPI1_Init();
   /* USER CODE BEGIN 2 */
- //HAL_SPI_Receive_DMA(&hspi1,rx_data,2048);
+ HAL_SPI_Receive_DMA(&hspi1,rx_data,13);
+ //HAL_SPI_Receive_IT(&hspi1,rx_data, 13);
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -103,11 +108,21 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-		if(HAL_GPIO_ReadPin(cs_GPIO_Port,cs_Pin)==0)
-		{
-			HAL_SPI_Receive(&hspi1,rx_data,20,1000);
-			a++;
-		}
+		  if(flag==1)
+			{
+				if(HAL_GPIO_ReadPin(cs_GPIO_Port,cs_Pin)==1)
+					{
+						tx_data[2]++;
+					HAL_SPI_Transmit_IT(&hspi1,tx_data,5);
+				}
+
+		 a++;
+
+
+		 flag=0;
+
+			}
+
   }
   /* USER CODE END 3 */
 }
@@ -178,8 +193,8 @@ static void MX_SPI1_Init(void)
   hspi1.Init.Mode = SPI_MODE_SLAVE;
   hspi1.Init.Direction = SPI_DIRECTION_2LINES;
   hspi1.Init.DataSize = SPI_DATASIZE_8BIT;
-  hspi1.Init.CLKPolarity = SPI_POLARITY_LOW;
-  hspi1.Init.CLKPhase = SPI_PHASE_1EDGE;
+  hspi1.Init.CLKPolarity = SPI_POLARITY_HIGH;
+  hspi1.Init.CLKPhase = SPI_PHASE_2EDGE;
   hspi1.Init.NSS = SPI_NSS_SOFT;
   hspi1.Init.FirstBit = SPI_FIRSTBIT_MSB;
   hspi1.Init.TIMode = SPI_TIMODE_DISABLE;
@@ -238,10 +253,34 @@ static void MX_GPIO_Init(void)
 
 /* USER CODE BEGIN 4 */
 void HAL_SPI_RxCpltCallback(SPI_HandleTypeDef *hspi)
-{
-	 HAL_SPI_Receive_DMA(&hspi1,rx_data,2048);
-	 
+{	 
+
+			if (rx_data[0]==0xff && rx_data[1] == 0x01 && rx_data[12] == 0xff )
+			{
+				flag=1;
+			}
+			else{
+
+			//	HAL_SPI_Receive_IT(&hspi1,rx_data, 13);
+				while(  HAL_GPIO_ReadPin(cs_GPIO_Port,cs_Pin))
+				{}
+NVIC_SystemReset();
+//				MX_GPIO_Init();
+//        MX_DMA_Init();
+//				MX_SPI1_Init();
+				 HAL_SPI_Receive_DMA(&hspi1,rx_data,13);
+			}
+
+	//		   
 }
+void HAL_SPI_TxCpltCallback(SPI_HandleTypeDef * hspi)
+{
+  // HAL_SPI_Receive_IT(&hspi1,rx_data, 13);
+					while(  HAL_GPIO_ReadPin(cs_GPIO_Port,cs_Pin))
+				{}
+	 HAL_SPI_Receive_DMA(&hspi1,rx_data,13);
+}
+
 /* USER CODE END 4 */
 
 /**
